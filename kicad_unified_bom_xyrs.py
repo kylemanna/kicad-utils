@@ -2,6 +2,12 @@
 """
     @package
     Generate a unified BOM and XYRS CSV file.
+
+    Invocation from Kicad:
+    $  python2 "/path/to/kicad_unified_bom_xyrs.py" "%I"
+
+    Look for output in the pcb output directory (same location as gerbers)
+
     Example fields:
          ['Reference',
           'Value',
@@ -72,7 +78,8 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 netlist_filename = sys.argv[1]
-pcb_filename = sys.argv[2]
+csv_filename = None if len(sys.argv) < 3 else sys.argv[2]
+pcb_filename = None if len(sys.argv) < 4 else sys.argv[3]
 
 # Generate an instance of a generic netlist, and load the netlist tree from
 # the command line option. If the file doesn't exist, execution will stop
@@ -83,8 +90,8 @@ components = net.getInterestingComponents()
 compfields = net.gatherComponentFieldUnion(components)
 partfields = net.gatherLibPartFieldUnion()
 
-eprint("compfields: {}".format(compfields))
-eprint("partfields: {}".format(partfields))
+eprint("[Info] compfields: {}".format(compfields))
+eprint("[Info] partfields: {}".format(partfields))
 
 columnset = compfields | partfields     # union
 columnset -= set(['Reference', 'Value', 'Description'])
@@ -119,11 +126,18 @@ for c in components:
 # Read and parse Kicad XYRS data from board file
 #
 
+proj_dir = os.path.dirname(os.path.abspath(netlist_filename))
+proj_prefix = os.path.splitext(netlist_filename)[0]
+proj = os.path.basename(proj_prefix)
+
 if not pcb_filename:
     # Guess the pcb file name based on net list
-    pcb_filename = os.path.splitext(netlist_filename)[0]+'.kicad_pcb'
+    pcb_filename = os.path.join(proj_dir, proj+'.kicad_pcb')
 
 board = pcbnew.LoadBoard(pcb_filename)
+output_dir = board.GetPlotOptions().GetOutputDirectory()
+csv_filename = os.path.join(proj_dir,output_dir, proj+'-bom-xyrs.csv')
+eprint('[Info] Writing output to {}'.format(csv_filename))
 for module in board.GetModules():
     # Only read modules marked as NORMAL+INSERT
     if (module.GetAttributes() != MODULE_ATTR_T.MOD_CMS):
@@ -148,12 +162,12 @@ for module in board.GetModules():
 
     ref = data['Reference']
     if ref not in db:
-        eprint('[WW] PCB Skipping "{}"'.format(ref))
+        eprint('[Warn] PCB Skipping "{}"'.format(ref))
         continue
 
     for key, value in data.items():
         if key in db[ref] and value != db[ref][key]:
-            eprint('[WW] PCB overriding {} {}, "{}" != "{}"'.format(ref, key, db[ref][key], value))
+            eprint('[Warn] PCB overriding {} {}, "{}" != "{}"'.format(ref, key, db[ref][key], value))
         db[ref][key] = value
 
     #eprint('Updated: {}'.format(db[ref]))
@@ -172,6 +186,7 @@ columns_out = ['Reference',
                'Side',
                'MFR',
                'MPN',
+               'OctopartID',
                'Datasheet',
               ]
 
@@ -193,7 +208,8 @@ for key,value in list(db.items()):
 #
 # Write clean output to csv based on key -> column dictionary
 #
-out = csv.DictWriter(sys.stdout, fieldnames=columns_out, extrasaction='ignore')
+fout = sys.stdout if not csv_filename else open(csv_filename, 'w')
+out = csv.DictWriter(fout, fieldnames=columns_out, extrasaction='ignore')
 out.writerow(dict( (n,n) for n in columns_out ))
 
 for key, value in sorted(db.items()):
