@@ -154,7 +154,7 @@ for module in board.GetModules():
     data = {
             'Reference': module.GetReference(),
             'PosX': pos_x/1000000.0,
-            'PosY': pos_y/1000000.0,
+            'PosY': -pos_y/1000000.0,
             'Rotation': module.GetOrientation()/10.0,
             'Side': side,
             'Footprint': fp,
