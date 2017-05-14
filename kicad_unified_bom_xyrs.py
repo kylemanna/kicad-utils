@@ -247,10 +247,13 @@ else:
     delimiter = ","
 out = csv.DictWriter(fout, delimiter=delimiter, fieldnames=columns_out, extrasaction='ignore')
 
-out.writerow(dict( (n,n) for n in columns_out ))
+out.writeheader()
 
 for key, value in sorted(db.items()):
     # print("entry: {}:{}".format(key, value))
     if value['DISTPN2'] == "":
-        value['DISTPN2'] = value['MPN']
+        if 'DISTPN' in value:
+            value['DISTPN2'] = value['DISTPN']
+        else:
+            value['DISTPN2'] = value['MPN']
     out.writerow(value)
