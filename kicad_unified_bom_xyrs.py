@@ -251,4 +251,6 @@ out.writerow(dict( (n,n) for n in columns_out ))
 
 for key, value in sorted(db.items()):
     # print("entry: {}:{}".format(key, value))
+    if value['DISTPN2'] == "":
+        value['DISTPN2'] = value['MPN']
     out.writerow(value)
