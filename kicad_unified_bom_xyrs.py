@@ -176,7 +176,7 @@ for module in board.GetModules():
         side = 'bottom' if module.IsFlipped() else 'top'
 
     fpid = module.GetFPID()
-    fp = '{}:{}'.format(fpid.GetLibNickname(), fpid.GetFootprintName())
+    fp = '{}:{}'.format(fpid.GetLibNickname(), fpid.GetLibItemName())
 
     scaling_factor = 1000000.0
     origin_offset = (0, 0)
